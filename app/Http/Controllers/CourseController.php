@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class CourseController extends Controller
 {
@@ -19,9 +20,13 @@ class CourseController extends Controller
         ];
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $courses = Course::latest()->paginate(10);
+        // Admin sees every course, a normal user sees only their own
+        $courses = $request->user()->role === 'admin'
+            ? Course::latest()->paginate(10)
+            : $request->user()->courses()->latest()->paginate(10);
+
         return view('courses.index', compact('courses'));
     }
 
@@ -33,8 +38,10 @@ class CourseController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate($this->rules());
-        $data['is_active'] = $request->boolean('is_active');   // unchecked box sends nothing
-        Course::create($data);
+        $data['is_active'] = $request->boolean('is_active');
+
+        // Owner comes from the logged-in user, never from the browser
+        $request->user()->courses()->create($data);
 
         return redirect()->route('courses.index')
             ->with('success', 'Course created successfully.');
@@ -42,16 +49,20 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
+        Gate::authorize('manage-course', $course);
         return view('courses.show', compact('course'));
     }
 
     public function edit(Course $course)
     {
+        Gate::authorize('manage-course', $course);
         return view('courses.edit', compact('course'));
     }
 
     public function update(Request $request, Course $course)
     {
+        Gate::authorize('manage-course', $course);
+
         $data = $request->validate($this->rules());
         $data['is_active'] = $request->boolean('is_active');
         $course->update($data);
@@ -62,6 +73,7 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
+        Gate::authorize('manage-course', $course);
         $course->delete();
 
         return redirect()->route('courses.index')

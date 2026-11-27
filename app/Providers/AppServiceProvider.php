@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Pagination\Paginator;
+use App\Models\Course;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -14,6 +16,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Paginator::useBootstrapFive();
+        // Admin can manage any course; a user can manage only their own
+        Gate::define('manage-course', function (User $user, Course $course) {
+            return $user->role === 'admin'
+                || $user->id === $course->user_id;
+        });
     }
 }

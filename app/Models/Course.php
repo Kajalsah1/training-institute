@@ -12,4 +12,9 @@ class Course extends Model
         'fee'       => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
